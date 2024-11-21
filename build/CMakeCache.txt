@@ -148,7 +148,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=MyOpenCVProject
+CMAKE_PROJECT_NAME:STATIC=mosaic
 
 //Path to a program.
 CMAKE_RANLIB:FILEPATH=/nix/store/zznja5f8v3jafffyah1rk46vpfcn38dv-gcc-wrapper-13.3.0/bin/ranlib
@@ -244,6 +244,15 @@ OpenMP_gomp_LIBRARY:FILEPATH=/nix/store/22nxhmsfcv2q2rpkmfvzwg2w5z1l231z-gcc-13.
 
 //Path to the pthread library for OpenMP
 OpenMP_pthread_LIBRARY:FILEPATH=/nix/store/3dyw8dzj9ab4m8hv5dpyx7zii8d0w6fi-glibc-2.39-52/lib/libpthread.so
+
+//Value Computed by CMake
+mosaic_BINARY_DIR:STATIC=/home/realram/code/mosaic/build
+
+//Value Computed by CMake
+mosaic_IS_TOP_LEVEL:STATIC=ON
+
+//Value Computed by CMake
+mosaic_SOURCE_DIR:STATIC=/home/realram/code/mosaic
 
 
 ########################

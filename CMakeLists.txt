@@ -1,28 +1,27 @@
-cmake_minimum_required(VERSION 3.10)
-project(MyOpenCVProject)
+cmake_minimum_required(VERSION 3.10)  # Set minimum CMake version
+
+project(mosaic)  # Your project name
+
+# Find OpenCV package (assuming OpenCV is installed)
+find_package(OpenCV REQUIRED)
 
 # Find OpenMP package
 find_package(OpenMP REQUIRED)
 
-# Set compiler flags for OpenMP
+# Add source files
+add_executable(mosaic main.cpp)  # Define the target executable
+
+# Apply OpenMP flags (only if OpenMP is found)
 if(OpenMP_CXX_FOUND)
-    target_compile_options(${PROJECT_NAME} PRIVATE ${OpenMP_CXX_FLAGS})
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenMP_CXX_LIBRARIES})
+    target_compile_options(mosaic PRIVATE ${OpenMP_CXX_FLAGS})  # Add OpenMP compile flags
+    target_link_libraries(mosaic PRIVATE ${OpenMP_CXX_LIBRARIES})  # Link OpenMP libraries
 endif()
 
+# Link OpenCV libraries to the project
+target_link_libraries(mosaic PRIVATE ${OpenCV_LIBS})
 
-# Find OpenCV
-find_package(OpenCV REQUIRED)
-
-# Include directories
-include_directories(${OpenCV_INCLUDE_DIRS})
-
-# Add your executable
-add_executable(my_project main.cpp)
-
-# Link OpenCV libraries
-target_link_libraries(my_project ${OpenCV_LIBS})
-
+# Debug
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
+
 

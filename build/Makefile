@@ -117,24 +117,24 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named my_project
+# Target rules for targets named mosaic
 
 # Build rule for target.
-my_project: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 my_project
-.PHONY : my_project
+mosaic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 mosaic
+.PHONY : mosaic
 
 # fast build rule for target.
-my_project/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_project.dir/build.make CMakeFiles/my_project.dir/build
-.PHONY : my_project/fast
+mosaic/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mosaic.dir/build.make CMakeFiles/mosaic.dir/build
+.PHONY : mosaic/fast
 
 main.o: main.cpp.o
 .PHONY : main.o
 
 # target to build an object file
 main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_project.dir/build.make CMakeFiles/my_project.dir/main.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mosaic.dir/build.make CMakeFiles/mosaic.dir/main.cpp.o
 .PHONY : main.cpp.o
 
 main.i: main.cpp.i
@@ -142,7 +142,7 @@ main.i: main.cpp.i
 
 # target to preprocess a source file
 main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_project.dir/build.make CMakeFiles/my_project.dir/main.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mosaic.dir/build.make CMakeFiles/mosaic.dir/main.cpp.i
 .PHONY : main.cpp.i
 
 main.s: main.cpp.s
@@ -150,7 +150,7 @@ main.s: main.cpp.s
 
 # target to generate assembly for a file
 main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_project.dir/build.make CMakeFiles/my_project.dir/main.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mosaic.dir/build.make CMakeFiles/mosaic.dir/main.cpp.s
 .PHONY : main.cpp.s
 
 # Help Target
@@ -161,7 +161,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... my_project"
+	@echo "... mosaic"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

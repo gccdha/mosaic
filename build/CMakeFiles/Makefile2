@@ -63,7 +63,7 @@ CMAKE_BINARY_DIR = /home/realram/code/mosaic/build
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/my_project.dir/all
+all: CMakeFiles/mosaic.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -71,34 +71,34 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/my_project.dir/clean
+clean: CMakeFiles/mosaic.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/my_project.dir
+# Target rules for target CMakeFiles/mosaic.dir
 
 # All Build rule for target.
-CMakeFiles/my_project.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_project.dir/build.make CMakeFiles/my_project.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_project.dir/build.make CMakeFiles/my_project.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/realram/code/mosaic/build/CMakeFiles --progress-num=1,2 "Built target my_project"
-.PHONY : CMakeFiles/my_project.dir/all
+CMakeFiles/mosaic.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mosaic.dir/build.make CMakeFiles/mosaic.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mosaic.dir/build.make CMakeFiles/mosaic.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/realram/code/mosaic/build/CMakeFiles --progress-num=1,2 "Built target mosaic"
+.PHONY : CMakeFiles/mosaic.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/my_project.dir/rule: cmake_check_build_system
+CMakeFiles/mosaic.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/realram/code/mosaic/build/CMakeFiles 2
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/my_project.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/mosaic.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/realram/code/mosaic/build/CMakeFiles 0
-.PHONY : CMakeFiles/my_project.dir/rule
+.PHONY : CMakeFiles/mosaic.dir/rule
 
 # Convenience name for target.
-my_project: CMakeFiles/my_project.dir/rule
-.PHONY : my_project
+mosaic: CMakeFiles/mosaic.dir/rule
+.PHONY : mosaic
 
 # clean rule for target.
-CMakeFiles/my_project.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_project.dir/build.make CMakeFiles/my_project.dir/clean
-.PHONY : CMakeFiles/my_project.dir/clean
+CMakeFiles/mosaic.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mosaic.dir/build.make CMakeFiles/mosaic.dir/clean
+.PHONY : CMakeFiles/mosaic.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.
