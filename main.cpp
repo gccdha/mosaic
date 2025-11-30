@@ -4,9 +4,9 @@
 #include <cmath>
 #include <opencv2/opencv.hpp>
 #include <omp.h>
-#define SQSIZE 60
-#define SQWIDTH 32
-#define SQHEIGHT 18
+#define SQSIZE 30
+#define SQWIDTH 64
+#define SQHEIGHT 36
 
 const static int AREA = SQWIDTH*SQHEIGHT;
 const static int AREA_S = AREA*8;
@@ -20,8 +20,8 @@ void optimize(int score[AREA][AREA_S], int output[AREA], char mode = 'm');
 int main (int argc, char *argv[]){
   const auto start = std::chrono::high_resolution_clock::now(); //Start timer
   //read file
-  std::string file2  = "../images/bmp/racoon.bmp";
-  std::string file = "../images/bmp/sunset_tram.bmp";
+  std::string file  = "../images/bmp/mr_bean.bmp";
+  std::string file2 = "../images/bmp/sand_fox.bmp";
 
   if(argc > 1) file = argv[1];
   if(argc > 2) file2 = argv[2];
@@ -29,6 +29,8 @@ int main (int argc, char *argv[]){
 
   cv::Mat img = cv::imread(file);
   cv::Mat img2 = cv::imread(file2);
+  //cv::Mat img2 = img.clone();
+  //cv::rotate(img2, img, cv::ROTATE_180);
   if (img.empty()||img2.empty()) {
       std::cerr << "Image not loaded!" << std::endl;
       return -1;
@@ -44,12 +46,19 @@ int main (int argc, char *argv[]){
   for(int i = AREA-1; i>=0;i--){
     for(int j = AREA_S-1;j>=0;j--){
       //std::cout << "w\n";
+
       table[i][j]=cost(squares[j],tiles[i]);
+      //
+      //
+
+      /*int lol = cost(squares[j],tiles[i]);
+      if(!lol) table[i][j] = 1000000000;
+      else table[i][j]=lol;*/
     }
   }
 
   int out[AREA];
-  optimize(table, out);
+  optimize(table, out, 'g');
   cv::Mat new_img = img2.clone();
   for(int i = 0; i<AREA; i++){
     //std::cout << i << ":  " <<(i/SQWIDTH)*SQSIZE << "  " <<(i/SQWIDTH)*SQSIZE+119 << "  " << (i%SQWIDTH)*SQSIZE << "  " <<(i%SQWIDTH)*SQSIZE+119 << '\n';
@@ -116,11 +125,11 @@ int diff(cv::Scalar source, cv::Scalar target, char method){
 
 cv::Mat transform(cv::Mat img, bool reflect, int rotate){
   //reflect then rotate 
+  //std::cout<<"called transform with reflect "<< reflect<<" and rotate "<<rotate<< '\n';
   if(reflect){
     // reflect over x axis
     cv::flip(img, img, 0);
   }
-
   switch(rotate){
     case 1:
       cv::rotate(img, img, cv::ROTATE_90_CLOCKWISE);
@@ -132,7 +141,7 @@ cv::Mat transform(cv::Mat img, bool reflect, int rotate){
       cv::rotate(img, img, cv::ROTATE_90_COUNTERCLOCKWISE);
       break;
   }
-  return img;
+  return img.clone();
 }
 
 
@@ -159,7 +168,7 @@ void disect(cv::Mat img, cv::Mat squares[], bool symetries){
     int ref = (i)/4;
     int rot = (i)%4;
     for(int j=0; j<AREA; j++){
-      squares[j+k]=transform(squares[j],ref,rot);
+      squares[j+k]=transform(squares[j],ref,rot); 
     }
   }
   return;
@@ -179,10 +188,32 @@ void optimize(int score[AREA][AREA_S], int output[AREA], char mode){
           }
         }
       }
+      //for(int i=0; i<AREA; i++){
+        //std::cout << i << ": " << output[i] << '\n';
+      //}
       return;
       break;
     }
-    case 'g':{ // greedy 
+    case 'g':{ // greedy
+      bool used[AREA_S];
+      for (int i=0; i<AREA_S;i++) used[i]=0;
+
+      for(int i=AREA-1; i>=0; i--){
+        int min = score[i][AREA_S-1];
+        output[i] = AREA_S-1;
+
+        for(int j=AREA_S-2; j>=0; j--){
+          if(score[i][j]<min && !used[j]){
+            std::cout << "j is "<<j<< '\n'; 
+            min = score[i][j];
+            output[i] = j;
+          }
+        }
+        for(int k=0; k<8; k++){
+          used[output[i]%AREA+k*AREA]=1;
+        }
+      }
+      return;
       break;
     }
     case 'h':{ // hungarian algorithm (optimal no-repeat solution)
@@ -196,5 +227,5 @@ void optimize(int score[AREA][AREA_S], int output[AREA], char mode){
  * 3. implement hungarian alg
  * 4. figure out how to restitch the image back together
  * 5. implement the canny edge finding
- *
+ * 6. replace this : montage $(seq -f "%gout.bmp" 0 2303) -tile 64x36 -geometry +0+0 -font DejaVu-Sans output.jpg
  * */
