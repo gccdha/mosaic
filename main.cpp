@@ -228,4 +228,6 @@ void optimize(int score[AREA][AREA_S], int output[AREA], char mode){
  * 4. figure out how to restitch the image back together
  * 5. implement the canny edge finding
  * 6. replace this : montage $(seq -f "%gout.bmp" 0 2303) -tile 64x36 -geometry +0+0 -font DejaVu-Sans output.jpg
+ * 7. implement in GPU for real time (maybe reararange previous frame to get current frame?)
+ * 8. Do the same thing but for sound; reararange song into itself or into another song
  * */
