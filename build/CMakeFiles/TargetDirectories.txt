@@ -1,3 +1,0 @@
-/home/realram/code/mosaic/build/CMakeFiles/mosaic.dir
-/home/realram/code/mosaic/build/CMakeFiles/edit_cache.dir
-/home/realram/code/mosaic/build/CMakeFiles/rebuild_cache.dir
