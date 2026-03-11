@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.10)  # Set minimum CMake version
 
 project(mosaic)  # Your project name
 
+
+# clangd LSP support
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Find OpenCV package (assuming OpenCV is installed)
 find_package(OpenCV REQUIRED)
 
@@ -23,5 +27,4 @@ target_link_libraries(mosaic PRIVATE ${OpenCV_LIBS})
 # Debug
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-
 

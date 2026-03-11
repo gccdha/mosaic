@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <cmath>
 #include <opencv2/opencv.hpp>
-#include <omp.h>
+// #include <omp.h>
 #define SQSIZE 30
 #define SQWIDTH 64
 #define SQHEIGHT 36

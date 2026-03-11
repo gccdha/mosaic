@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/mosaic.dir/link.d"
   "CMakeFiles/mosaic.dir/main.cpp.o"
   "CMakeFiles/mosaic.dir/main.cpp.o.d"
   "mosaic"
