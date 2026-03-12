@@ -1,7 +1,7 @@
 [
 {
   "directory": "/home/realram/code/mosaic/build",
-  "command": "/nix/store/kbw2j1vag664b3sj3rjwz9v53cqx87sb-gcc-wrapper-15.2.0/bin/g++  -isystem /nix/store/gsykwaghk72cm2wwfcxpznr0i3yp9020-opencv-4.13.0/include/opencv4 -g -fopenmp -o CMakeFiles/mosaic.dir/main.cpp.o -c /home/realram/code/mosaic/main.cpp",
+  "command": "/nix/store/kbw2j1vag664b3sj3rjwz9v53cqx87sb-gcc-wrapper-15.2.0/bin/g++  -isystem /nix/store/gsykwaghk72cm2wwfcxpznr0i3yp9020-opencv-4.13.0/include/opencv4 -g -std=gnu++20 -fopenmp -o CMakeFiles/mosaic.dir/main.cpp.o -c /home/realram/code/mosaic/main.cpp",
   "file": "/home/realram/code/mosaic/main.cpp",
   "output": "CMakeFiles/mosaic.dir/main.cpp.o"
 }

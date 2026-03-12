@@ -23,7 +23,7 @@ cv::Mat transform(cv::Mat, bool reflect = 0, int rotate = 0);
 void disect(cv::Mat, cv::Mat[], bool);
 void optimize(int score[AREA][AREA_S], int output[AREA], char mode = 'm');
 void printarray(int, int, int**);
-void hungarian_algorithm(std::vector<std::vector<int>> matrix, std::pair<int, int> output[]);
+void hungarian_algorithm(const int rows, const int cols, std::vector<int>& matrix, std::vector<std::pair<int, int>>& output);
 
 int main (int argc, char *argv[]){
   
@@ -95,14 +95,17 @@ int main (int argc, char *argv[]){
   
 
 
-  std::vector<std::vector<int>> vec = {
-    {1, 2, 3, 4},
-    {3, 7, 2, 4},
-    {2, 3, 4, 3},
-    {3, 4, 4, 4}
+  std::vector<int> vec = {
+    1, 2, 3, 4,
+    3, 7, 2, 4,
+    2, 3, 4, 3,
+    3, 4, 4, 4
   };
-  std::pair<int, int> output[1];
-  hungarian_algorithm(vec,output);
+  std::vector<std::pair<int, int>> output;
+
+  const int rows = 4;
+  const int columns = 4;
+  hungarian_algorithm(rows, columns, vec,output);
   
 
 }
@@ -255,57 +258,41 @@ void hungarian_algorithm(const int rows, const int cols, std::vector<int>& matri
   
   
 
-  // //find the min in each row and then subtract it from each element in that row
-  // std::transform(matrix.begin(), matrix.end(), matrix.begin(), 
-  //                [](std::vector<int> row) -> std::vector<int>{
-  //                  int min = *std::min_element(row.begin(), row.end());
-  //                  std::transform(row.begin(), row.end(), row.begin(),
-  //                                 [min](int i) -> int{return i-min;});
-  //                  return row;
-  //                });
-
+  //find the min in each row and then subtract it from each element in that row
   for (int i = 0; i < rows; i++){
-    int min = INT_MAX;
-    
-    for(int j = 0;  j < cols; j++){
-      min = std::min(min, matrix[i*cols + j]);
-    }
+
+    //
+    // int min = INT_MAX;
+    // for (int j = 0; j < cols; j++){
+    //   min = std::min(min, matrix[i*rows +  j]);
+    // }
+
+    std::span<int> row = std::span(matrix).subspan(i * cols, cols);
+    int min = *std::min_element(row.begin(), row.end());
 
     for(int j = 0; j<cols; j++){
       matrix[i*cols + j] -= min;
     }
   }
 
-  // //find the min in each column and then subtract it from each element in that column
-  // std::vector<int> col_min(matrix[0].size(), INT_MAX);
-  // for(const auto& row : matrix)
-  //   std::transform(row.begin(), row.end(), col_min.begin(), col_min.begin(),
-  //                  [](int val, int minval) -> int{return std::min(val, minval);});
-  //
-  // std::transform(matrix.begin(), matrix.end(), matrix.begin(),
-  //                [&col_min](std::vector<int> row)->std::vector<int>{
-  //                std::transform(col_min.begin(), col_min.end(), row.begin(), row.begin(),
-  //                                      [](int minval, int val) -> int{return val - minval;});
-  //                return row;
-  //                });
-  //
-
+  //find the min in each column and then subtract it from each element in that column
   for(int j = 0; j < cols; j++){
     int min = INT_MAX;
 
     for (int i = 0; i < rows; i++) {
       min =  std::min(min, matrix[i*rows + j]);
     }
+
     for (int i = 0; i < rows; i++){
       matrix[i*rows + j] -=  min;
     }
   }
 
-  
 
-
-  for(std::vector<int> vec : matrix){
-    for(int i: vec) std::cout << i << ' '; 
+  for(int i = 0; i < rows; i++){
+    for(int j = 0; j< cols; j++){
+      std::cout << matrix[i*rows + j] << ' ';
+    }
     std::cout << std::endl;
   };
 

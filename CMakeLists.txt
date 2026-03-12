@@ -6,6 +6,9 @@ project(mosaic)  # Your project name
 # clangd LSP support
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# allow c++20 features
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Find OpenCV package (assuming OpenCV is installed)
 find_package(OpenCV REQUIRED)
 
