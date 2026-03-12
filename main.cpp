@@ -1,8 +1,13 @@
+#include <algorithm>
+#include <climits>
 #include <iostream>
 #include <chrono>
 #include <stdlib.h>
 #include <cmath>
 #include <opencv2/opencv.hpp>
+// #include <tuple>
+#include <utility>
+#include <vector>
 // #include <getopt.h>
 // #include <omp.h>
 #define SQSIZE 30
@@ -17,73 +22,89 @@ int diff(cv::Scalar, cv::Scalar, char method = ' ');
 cv::Mat transform(cv::Mat, bool reflect = 0, int rotate = 0);
 void disect(cv::Mat, cv::Mat[], bool);
 void optimize(int score[AREA][AREA_S], int output[AREA], char mode = 'm');
+void printarray(int, int, int**);
+void hungarian_algorithm(std::vector<std::vector<int>> matrix, std::pair<int, int> output[]);
 
 int main (int argc, char *argv[]){
   
-  const auto start = std::chrono::high_resolution_clock::now(); //Start timer
-  //Parse command line arguments
-  if(argc <= 2) std::cout << "ERROR: expected 2 arguments" << std::endl;
-  else return -1;
-
-  std::string file = argv[1];
-  std::string file2 = argv[2];
-  std::cout<<"reading "<<file<< " " <<file2<<'\n';
-
-  //Read files. img is source and img2 is targt TODO: rename vars to reflect this
-  cv::Mat img = cv::imread(file);
-  cv::Mat img2 = cv::imread(file2);
-  if (img.empty()||img2.empty()) {
-      std::cerr << "Image not loaded!" << std::endl;
-      return -1;
-  }
-
-  //Extract into array
-  cv::Mat squares[AREA_S];
-  cv::Mat tiles[AREA];
-  disect(img, squares, true);
-  disect(img2, tiles, false);
-
-  //Generate cost matrix for each pairing of input and output:
-  int table[AREA][AREA_S];
-  #pragma omp parallel for collapse(2)
-  for(int i = AREA-1; i>=0;i--){
-    for(int j = AREA_S-1;j>=0;j--){
-      table[i][j]=cost(squares[j],tiles[i]);
-    }
-  }
+  // const auto start = std::chrono::high_resolution_clock::now(); //Start timer
+  // //Parse command line arguments
+  // if(argc <= 2) std::cout << "ERROR: expected 2 arguments" << std::endl;
+  // else return -1;
+  //
+  // std::string file = argv[1];
+  // std::string file2 = argv[2];
+  // std::cout<<"reading "<<file<< " " <<file2<<'\n';
+  //
+  // //Read files. img is source and img2 is targt TODO: rename vars to reflect this
+  // cv::Mat img = cv::imread(file);
+  // cv::Mat img2 = cv::imread(file2);
+  // if (img.empty()||img2.empty()) {
+  //     std::cerr << "Image not loaded!" << std::endl;
+  //     return -1;
+  // }
+  //
+  // //Extract into array
+  // cv::Mat squares[AREA_S];
+  // cv::Mat tiles[AREA];
+  // disect(img, squares, true);
+  // disect(img2, tiles, false);
+  //
+  // //Generate cost matrix for each pairing of input and output:
+  // int table[AREA][AREA_S];
+  // #pragma omp parallel for collapse(2)
+  // for(int i = AREA-1; i>=0;i--){
+  //   for(int j = AREA_S-1;j>=0;j--){
+  //     table[i][j]=cost(squares[j],tiles[i]);
+  //   }
+  // }
+  //
+  // //Find optimal solution and output squares in corresponding order (need to be constructed externally with imagemagick)
+  // //TODO: find a way to stitch images back together without outputting them
+  // int out[AREA];
+  // optimize(table, out, 'g');
+  // cv::Mat new_img = img2.clone();
+  // for(int i = 0; i<AREA; i++){
+  //   //std::cout << i << ":  " <<(i/SQWIDTH)*SQSIZE << "  " <<(i/SQWIDTH)*SQSIZE+119 << "  " << (i%SQWIDTH)*SQSIZE << "  " <<(i%SQWIDTH)*SQSIZE+119 << '\n';
+  //   cv::Mat roi = new_img(cv::Range((i/SQWIDTH)*SQSIZE,(i/SQWIDTH)*SQSIZE+SQSIZE-1),cv::Range((i%SQWIDTH)*SQSIZE,(i%SQWIDTH)*SQSIZE+SQSIZE-1));
+  //   squares[out[i]].copyTo(roi);
+  //   cv::imwrite("output/"+ std::to_string(i)+"out.bmp", squares[out[i]]);
+  // }
+  //
+  // cv::imwrite("test.bmp", new_img);
+  //
+  //
+  //
+  // //img.at<cv::Vec3b>(1000,0) = {0,0,255};
+  // //cv::putText(img, "Graphic design is my passion", cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
+  // //cv::imwrite("test.bmp", transform(img,1,3));
+  //
+  // /*for(int i=0; i<(16*9*8*16*9); i++){
+  // std::cout << "pixel: " << cost(squares[1][1], squares[5][9]);
+  // std::cout << "\n avg:"<< cost(squares[1][1], squares[5][9], 'a');
+  // std::cout << '\n' << i << std::endl;
+  // }*/
+  //
+  // const auto end = std::chrono::high_resolution_clock::now(); //End timer
+  // const std::chrono::duration<double> elapsed_seconds{end-start};
+  // std::cout << "run in " << elapsed_seconds.count() <<"s\n";
+  // //system("feh test.bmp");
+  // //system("feh -i *out.bmp");
+  // return 0;
+  //
   
-  //Find optimal solution and output squares in corresponding order (need to be constructed externally with imagemagick)
-  //TODO: find a way to stitch images back together without outputting them
-  int out[AREA];
-  optimize(table, out, 'g');
-  cv::Mat new_img = img2.clone();
-  for(int i = 0; i<AREA; i++){
-    //std::cout << i << ":  " <<(i/SQWIDTH)*SQSIZE << "  " <<(i/SQWIDTH)*SQSIZE+119 << "  " << (i%SQWIDTH)*SQSIZE << "  " <<(i%SQWIDTH)*SQSIZE+119 << '\n';
-    cv::Mat roi = new_img(cv::Range((i/SQWIDTH)*SQSIZE,(i/SQWIDTH)*SQSIZE+SQSIZE-1),cv::Range((i%SQWIDTH)*SQSIZE,(i%SQWIDTH)*SQSIZE+SQSIZE-1));
-    squares[out[i]].copyTo(roi);
-    cv::imwrite("output/"+ std::to_string(i)+"out.bmp", squares[out[i]]);
-  }
 
-  cv::imwrite("test.bmp", new_img);
+
+  std::vector<std::vector<int>> vec = {
+    {1, 2, 3, 4},
+    {3, 7, 2, 4},
+    {2, 3, 4, 3},
+    {3, 4, 4, 4}
+  };
+  std::pair<int, int> output[1];
+  hungarian_algorithm(vec,output);
   
 
-  
-  //img.at<cv::Vec3b>(1000,0) = {0,0,255};
-  //cv::putText(img, "Graphic design is my passion", cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
-  //cv::imwrite("test.bmp", transform(img,1,3));
-
-  /*for(int i=0; i<(16*9*8*16*9); i++){
-  std::cout << "pixel: " << cost(squares[1][1], squares[5][9]);
-  std::cout << "\n avg:"<< cost(squares[1][1], squares[5][9], 'a');
-  std::cout << '\n' << i << std::endl;
-  }*/
-
-  const auto end = std::chrono::high_resolution_clock::now(); //End timer
-  const std::chrono::duration<double> elapsed_seconds{end-start};
-  std::cout << "run in " << elapsed_seconds.count() <<"s\n";
-  //system("feh test.bmp");
-  //system("feh -i *out.bmp");
-  return 0;
 }
 
 //Calculate difference score between two squares using average or the summed pixelwise difference
@@ -229,6 +250,37 @@ void optimize(int score[AREA][AREA_S], int output[AREA], char mode){
   }
 }
 
+//Find the optimal assignment
+void hungarian_algorithm(std::vector<std::vector<int>> matrix, std::pair<int, int> output[]){
+  
+
+  //subtract the minimum from each row from every element of that row
+  std::transform(matrix.begin(), matrix.end(), matrix.begin(), 
+                 [](std::vector<int> row) -> std::vector<int>{
+                   int min = *std::min_element(row.begin(), row.end());
+                   std::transform(row.begin(), row.end(), row.begin(),
+                                  [min](int i) -> int{return i-min;});
+                   return row;
+                 });
+
+  std::vector<int> col_min(matrix[0].size(), INT_MAX);
+  for(const auto& row : matrix)
+    std::transform(row.begin(), row.end(), col_min.begin(), col_min.begin(),
+                   [](int val, int minval) -> int{return std::min(val, minval);});
+
+  std::transform(matrix.begin(), matrix.end(), matrix.begin(),
+                 [&col_min](std::vector<int> row)->std::vector<int>{
+                 std::transform(col_min.begin(), col_min.end(), row.begin(), row.begin(),
+                                       [](int minval, int val) -> int{return val - minval;});
+                 return row;
+                 });
+
+  for(std::vector<int> vec : matrix){
+    for(int i: vec) std::cout << i << ' '; 
+    std::cout << std::endl;
+  };
+
+}
 
 /* TODO:
  * 3. implement hungarian alg
