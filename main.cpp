@@ -1,7 +1,13 @@
 #include <algorithm>
+#include <cassert>
 #include <climits>
+#include <cstdlib>
+#include <format>
+#include <iomanip>
+#include <ios>
 #include <iostream>
 #include <chrono>
+#include <span>
 #include <stdlib.h>
 #include <cmath>
 #include <opencv2/opencv.hpp>
@@ -24,6 +30,40 @@ void disect(cv::Mat, cv::Mat[], bool);
 void optimize(int score[AREA][AREA_S], int output[AREA], char mode = 'm');
 void printarray(int, int, int**);
 void hungarian_algorithm(const int rows, const int cols, std::vector<int>& matrix, std::vector<std::pair<int, int>>& output);
+int draw_lines(const int rows, const int cols, std::vector<int>& matrix, std::pair<std::vector<int>, std::vector<int>>& lines);
+
+
+void test(const int rows, const int cols, std::vector<int>& matrix, std::vector<std::pair<int, int>>& output){
+  //find the min in each row and then subtract it from each element in that row
+  for (int i = 0; i < rows; i++){
+
+    int min = INT_MAX;
+    for (int j = 0; j < cols; j++){
+      min = std::min(min, matrix[i*rows +  j]);
+    }
+
+    // std::span<int> row = std::span(matrix).subspan(i * cols, cols);
+    // int min = *std::min_element(row.begin(), row.end());
+
+    for(int j = 0; j<cols; j++){
+      matrix[i*cols + j] -= min;
+    }
+  }
+
+  //find the min in each column and then subtract it from each element in that column
+  for(int j = 0; j < cols; j++){
+    int min = INT_MAX;
+
+    for (int i = 0; i < rows; i++) {
+      min =  std::min(min, matrix[i*rows + j]);
+    }
+
+    for (int i = 0; i < rows; i++){
+      matrix[i*rows + j] -=  min;
+    }
+  }
+}
+
 
 int main (int argc, char *argv[]){
   
@@ -93,20 +133,27 @@ int main (int argc, char *argv[]){
   // return 0;
   //
   
+  const int rows = 10;
+  const int columns = 10;
 
 
-  std::vector<int> vec = {
-    1, 2, 3, 4,
-    3, 7, 2, 4,
-    2, 3, 4, 3,
-    3, 4, 4, 4
-  };
+  std::vector<int> vec(rows*columns, 0);
+
+  srand(25);
+  for(int i = 0; i < rows*columns; i++){
+    vec[i] = rand() % 1000;
+    // std::cout << vec[i] << ' ';
+  }
+
   std::vector<std::pair<int, int>> output;
+  std::vector<int> vec2 = vec;
 
-  const int rows = 4;
-  const int columns = 4;
-  hungarian_algorithm(rows, columns, vec,output);
+
+  test(rows, columns, vec, output);
+  hungarian_algorithm(rows, columns, vec2,output);
   
+
+
 
 }
 
@@ -253,27 +300,138 @@ void optimize(int score[AREA][AREA_S], int output[AREA], char mode){
   }
 }
 
+void print_matrix(const int rows, const int cols, std::vector<int>& matrix, std::pair<std::vector<int>, const std::vector<int>> lines = {{},{}}){
+  std::span<int> matrix_span = std::span(matrix);
+  int max = *std::max_element(matrix_span.begin(), matrix_span.end());
+  
+  int digits = log10(max)+1;
+  for(int i = 0; i< rows; i++){
+    for(int j = 0; j<cols; j++){
+      bool col_cover = std::find(lines.second.begin(), lines.second.end(), j) != lines.second.end(); 
+      std::string fill = " ";
+      if (col_cover) {
+        fill = "║";
+      }
+      std::string formatstr = std::format("{{:^{}}}", digits+1);
+      std::cout << std::vformat(formatstr,std::make_format_args(fill));
+    }
+    std::cout << std::endl;
+
+    for(int j = 0; j<cols; j++){
+      std::string fill = "";
+
+      //if the current cell is covered, replace it with an appropriate box drawing char
+      bool row_cover = std::find(lines.first.begin(), lines.first.end(), i) != lines.first.end();
+      if (row_cover) {
+        fill = "═";
+      }
+
+      std::string formatstr = std::format("{{:{}>{}}}", fill, digits+1);
+      
+      std::cout << std::vformat(formatstr, std::make_format_args(matrix[i*cols+j]));
+    }
+    std::cout << std::endl;
+  }
+  
+}
+
+//TODO: lots of duplicated code from draw_lines, so maybe do something about that
+void assign_tasks(const int rows, const int cols, std::vector<int>& matrix, int assignments[]){ //assignments has size "rows"
+  int col_zeroes[cols];
+  int row_zeroes[rows];
+
+
+  for(int i = 0; i< cols; i++){
+    col_zeroes[cols] = -1;
+  }
+
+  int assignment_count = 0;
+  bool assign_arbitrary = false;
+  while(assignment_count < rows)
+  {   
+    bool row_assigned = false;
+    //assign all rows with one optimal worker
+    for(int i = 0; i < rows; i++){
+      int z = 0;
+      int latest = 0; //gives column if there is one worker
+      for(int j = 0; j < cols; j++){
+        if(matrix[i*cols + j] == 0 && col_zeroes[j] != 0){
+          z++;
+          latest = j;
+        }
+      }
+      //check if there is one worker or if every row and col has more than 1 worker
+      if(z == 1 || (z > 1 && assign_arbitrary)){
+        assignments[i] = latest;
+        assignment_count++;
+        row_zeroes[i] = 0;
+        row_assigned = true;
+        assign_arbitrary = false;
+        std::cout << "assign " << latest << " to job " << i << std::endl;
+        // col_zeroes[latest]--;
+      } 
+      else row_zeroes[i] = z;
+    }
+
+    bool col_assigned = false;
+    //if no jobs have one optimal worker, we try to assign workers with one optimal jobs
+    for(int j = 0; (j < cols)&&(!row_assigned); j++){
+      int z = 0;
+      int latest = 0;
+      for(int i=0; i < rows; i++){
+        if(matrix[i*cols+j] == 0 && row_zeroes[i] != 0){
+          z++;
+          latest = i;
+        }
+      }
+      if(z == 1){
+        assignments[latest] = j;
+        assignment_count++;
+        col_zeroes[j]=0;
+        col_assigned = true;
+        std::cout << "assign " << j << " to job " << latest << std::endl;
+      }
+      col_zeroes[j]=z;
+    }
+
+    if(!(row_assigned || col_assigned)) assign_arbitrary = true;
+  }
+
+
+
+  //We greedilly assign tasks with only one zero in the row or column.
+  
+  // std::cout << "num_lines: " << num_lines;
+  // return num_lines;
+  //lines has 2 vectors, one for rows with lines in them and one for columns with lines in them
+ 
+}
+
+
 //Find the optimal assignment
 void hungarian_algorithm(const int rows, const int cols, std::vector<int>& matrix, std::vector<std::pair<int, int>>& output){
+
+  assert(rows <= cols);
   
   
 
   //find the min in each row and then subtract it from each element in that row
   for (int i = 0; i < rows; i++){
 
-    //
-    // int min = INT_MAX;
-    // for (int j = 0; j < cols; j++){
-    //   min = std::min(min, matrix[i*rows +  j]);
-    // }
 
-    std::span<int> row = std::span(matrix).subspan(i * cols, cols);
-    int min = *std::min_element(row.begin(), row.end());
+    int min = INT_MAX;
+    for (int j = 0; j < cols; j++){
+      min = std::min(min, matrix[i*rows +  j]);
+    }
+
+    // std::span<int> row = std::span(matrix).subspan(i * cols, cols);
+    // int min = *std::min_element(row.begin(), row.end());
 
     for(int j = 0; j<cols; j++){
       matrix[i*cols + j] -= min;
     }
   }
+  
 
   //find the min in each column and then subtract it from each element in that column
   for(int j = 0; j < cols; j++){
@@ -289,13 +447,160 @@ void hungarian_algorithm(const int rows, const int cols, std::vector<int>& matri
   }
 
 
-  for(int i = 0; i < rows; i++){
-    for(int j = 0; j< cols; j++){
-      std::cout << matrix[i*rows + j] << ' ';
-    }
-    std::cout << std::endl;
-  };
+  // for(int i = 0; i < rows; i++){
+  //   for(int j = 0; j< cols; j++){
+  //     std::cout << matrix[i*rows + j] << ' ';
+  //   }
+  //   std::cout << std::endl;
+  // };
 
+  std::pair<std::vector<int>, std::vector<int>> lines;
+  int numlines = 0;
+  while((numlines = draw_lines(rows, cols, matrix, lines)) < rows){
+    // find smallest value not in a row or column that is covered
+    // for(int i = 0; i < rows; i++){
+    //   if(std::find(lines.first.begin(), lines.first.end(), i) == lines.first.end()){
+    //   }
+    // }
+
+    int min = INT_MAX;
+    for(int i = 0; i < rows*cols; i++){
+      int row = i/cols;
+      int col = i%cols;
+
+      //if the current cell isn't covered by a line, count it for the min
+      if(std::find(lines.first.begin(), lines.first.end(), row) == lines.first.end()
+      && std::find(lines.second.begin(), lines.second.end(), col) == lines.second.end()){
+        min = std::min(min, matrix[i]);
+      }
+    }
+
+    for(int i = 0; i < rows*cols; i++){
+      int row = i/cols;
+      int col = i%cols;
+
+      //if the current cell is covered, do nothing, if its double covened, add the min, if its uncovered, subtract the min
+      bool line_row = std::find(lines.first.begin(), lines.first.end(), row) != lines.first.end();
+      bool line_col = std::find(lines.second.begin(), lines.second.end(), col) != lines.second.end();
+      if(line_row && line_col){
+        matrix[i] += min;
+      }
+      else if(!line_row && !line_col){
+        matrix[i] -= min;
+      }
+    }
+
+    // print_matrix(rows, cols, matrix, lines);
+    lines = {{},{}};
+  }
+
+  std::cout << "rows: ";
+  for(const auto& el : lines.first){
+    std::cout << el << ", ";
+  }
+  std::cout << std::endl << "cols: ";
+  for(const auto& el : lines.second){
+    std::cout << el << ", ";
+  }
+  std::cout << std::endl;
+
+
+
+  print_matrix(rows, cols, matrix, lines);
+  std::cout << "with " << numlines << " lines\n";
+
+
+  int assignments[rows];
+  for(int i = 0; i<rows; i++){
+    assignments[i] = -1;
+  }
+
+  assign_tasks(rows, cols, matrix, assignments);
+
+  for(int i = 0; i<rows; i++){
+    std::cout << "assignment " << i << ": " << assignments[i] << std::endl;
+  }
+
+
+
+}
+
+//Returns the number of lines drawn and populates "lines" argument with vectors with index of rows and columns with lines on them (respectively)
+int draw_lines(const int rows, const int cols, std::vector<int>& matrix, std::pair<std::vector<int>, std::vector<int>>& lines){
+  int col_zeroes[cols];
+  int row_zeroes[rows];
+
+
+  for(int i = 0; i < rows; i++){
+      int z = 0;
+      for(int j = 0; j < cols; j++){
+        if(matrix[i*cols + j] == 0) z++;
+    }
+    row_zeroes[i] = z;
+  }
+
+  for(int j = 0; j < cols; j++){
+    int z = 0;
+    for(int i=0; i < rows; i++){
+      if(matrix[i*cols+j] == 0) z++;
+    }
+    col_zeroes[j]=z;
+  }
+
+
+  //We greedilly assign lines based on the number of zeroes in a row or column.
+  int num_lines = 0;
+  while(true){
+    // find row/column with max number of zeroes
+
+    // std::pair<int, int> maxrow = {0,0}; // row, value
+    // std::pair<int, int> maxcol = {0,0}; // col, value
+    // TODO: rearrange this into a for loop for clarity
+
+    //index of row/col that contains maximum # of zeroes
+    int maxrow = 0;
+    int maxcol = 0;
+
+    //find the maximum row and col 
+    for(int i = 0; i < rows; i++){
+      if(row_zeroes[i] > row_zeroes[maxrow]){
+        maxrow = i;
+      }
+    }
+    
+    for(int j = 0; j < cols; j++){
+      if(col_zeroes[j] > col_zeroes[maxcol]){
+        maxcol = j;
+      }
+    }
+
+    if(row_zeroes[maxrow] == 0) break; //this means all zeroes are covered
+    num_lines++;
+
+    //put a line on the row or column with the most zeroes (equal means row because of locality)
+    //remove coverd zeroes from the count from the rows and columns that they are a part of
+    //add the line to the list of lines
+    if(row_zeroes[maxrow] < col_zeroes[maxcol]){
+      lines.second.push_back(maxcol);
+      for(int i = 0; i < rows; i++){
+        if(matrix[i*cols + maxcol] == 0) row_zeroes[i]--;
+      }
+      col_zeroes[maxcol] = 0;
+    } else {
+      lines.first.push_back(maxrow);
+      for(int j = 0; j < cols; j++){
+        if(matrix[maxrow*cols + j] == 0) col_zeroes[j]--;
+      }
+      row_zeroes[maxrow] = 0;
+    }
+    // print_matrix(rows, cols, matrix, lines);
+    // std::cout << "=================" << std::endl;
+  }
+  
+  // std::cout << "num_lines: " << num_lines;
+  return num_lines;
+  //lines has 2 vectors, one for rows with lines in them and one for columns with lines in them
+ 
 }
 
 /* TODO:
@@ -305,4 +610,6 @@ void hungarian_algorithm(const int rows, const int cols, std::vector<int>& matri
  * 6. replace this : montage $(seq -f "%gout.bmp" 0 2303) -tile 64x36 -geometry +0+0 -font DejaVu-Sans output.jpg
  * 7. implement in GPU for real time (maybe reararange previous frame to get current frame?)
  * 8. Do the same thing but for sound; reararange song into itself or into another song
+ * TESTS: Does it correctly rearrange the image into itself? Can it correctly recreate the target image if the input
+ * includes every color, the square size is 1px, and repeats are allowed
  * */
