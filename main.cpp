@@ -28,9 +28,13 @@ int diff(cv::Scalar, cv::Scalar, char method = ' ');
 cv::Mat transform(cv::Mat, bool reflect = 0, int rotate = 0);
 void disect(cv::Mat, cv::Mat[], bool);
 void optimize(int score[AREA][AREA_S], int output[AREA], char mode = 'm');
-void printarray(int, int, int**);
+void print_matrix(const int rows, const int cols, std::vector<int>& matrix, std::pair<std::vector<int>, const std::vector<int>> lines = {{},{}});
 void hungarian_algorithm(const int rows, const int cols, std::vector<int>& matrix, std::vector<std::pair<int, int>>& output);
 int draw_lines(const int rows, const int cols, std::vector<int>& matrix, std::pair<std::vector<int>, std::vector<int>>& lines);
+std::vector<int> graph_hungarian(const int rows, const int cols, const std::vector<int>& matrix);
+int evaluate_matching(std::vector<int>& matrix, std::vector<int>& matching);
+int brute_forcer(const int rows, const int cols, std::vector<int>& matrix);
+void print_matching(std::vector<int>& matching);
 
 
 void test(const int rows, const int cols, std::vector<int>& matrix, std::vector<std::pair<int, int>>& output){
@@ -133,28 +137,47 @@ int main (int argc, char *argv[]){
   // return 0;
   //
   
-  const int rows = 10;
-  const int columns = 10;
+  const int rows = 10000;
+  const int columns = 10000;
 
 
   std::vector<int> vec(rows*columns, 0);
+  
+  for(int seed = 0; seed < 1; seed++){
+    srand(seed);
+    for(int i = 0; i < rows*columns; i++){
+      vec[i] = rand() % 1000;
+      // std::cout << vec[i] << ' ';
+    }
 
-  srand(25);
-  for(int i = 0; i < rows*columns; i++){
-    vec[i] = rand() % 1000;
-    // std::cout << vec[i] << ' ';
+    std::vector<std::pair<int, int>> output;
+    std::vector<int> vec2 = vec;
+
+    //
+    // test(rows, columns, vec, output);
+    // hungarian_algorithm(rows, columns, vec2,output);
+    // print_matrix(rows, columns, vec);
+    std::vector<int> matching = graph_hungarian(rows, columns, vec);
+
+    //int ha = evaluate_matching(vec, matching);
+
+
+    //std::cout << "Hungarian algorithm value: " << evaluate_matching(vec2, matching) << std::endl;
+    //print_matching(matching);:
+
+    //int bf = brute_forcer(rows, columns, vec);
+
+    //assert(ha == bf);
   }
 
-  std::vector<std::pair<int, int>> output;
-  std::vector<int> vec2 = vec;
+}
 
-
-  test(rows, columns, vec, output);
-  hungarian_algorithm(rows, columns, vec2,output);
-  
-
-
-
+void print_matching(std::vector<int>& matching){
+  std::cout << "Matching:\n";
+  for(int i = 0; i< matching.size(); i++){
+    std::cout << "Worker " << i << " is assigned to job " << matching[i] << std::endl;
+  }
+  std::cout << std::endl;
 }
 
 //Calculate difference score between two squares using average or the summed pixelwise difference
@@ -300,7 +323,7 @@ void optimize(int score[AREA][AREA_S], int output[AREA], char mode){
   }
 }
 
-void print_matrix(const int rows, const int cols, std::vector<int>& matrix, std::pair<std::vector<int>, const std::vector<int>> lines = {{},{}}){
+void print_matrix(const int rows, const int cols, std::vector<int>& matrix, std::pair<std::vector<int>, const std::vector<int>> lines){
   std::span<int> matrix_span = std::span(matrix);
   int max = *std::max_element(matrix_span.begin(), matrix_span.end());
   
@@ -601,6 +624,135 @@ int draw_lines(const int rows, const int cols, std::vector<int>& matrix, std::pa
   return num_lines;
   //lines has 2 vectors, one for rows with lines in them and one for columns with lines in them
  
+}
+
+
+std::vector<int> graph_hungarian(const int rows, const int cols, const std::vector<int>& matrix){
+  //make it clearer what these mean (J is jobs, W is workers)
+  const int J = rows;
+  const int W = cols;
+  assert(J <= W);
+
+  // std::vector<int> jobs; //list of jobs that have been assigned (S_j)
+  std::vector<int> matching(W, -1); // matching[worker] = -1 if not assigned, or job if assigned (M)
+  
+  //potential function
+  std::vector<int> w_potential(W, 0); //for worker nodes
+  std::vector<int> j_potential(J, 0); //for job nodes
+
+  for(int current_job = 0; current_job < J; current_job++){
+    std::cout << "Assigning job " << current_job << '\n';
+    // jobs.push_back(current_job); //add the current node to get S_j from S_{j-1}
+    
+    ///keeps track of which nodes can do what for the min and the path back to j(Z)
+    std::vector<int> j_parent(J, -1); //job nodes
+    std::vector<int> w_parent(W, -1);  //worker nodes
+    j_parent[current_job] = W+1; //mark starting job as non existant worker so that it is > -1 but not assigned
+   
+    while(true){
+      int min = INT_MAX;    //Min of the diff between the edge weight and potential for the endponits (Delta)
+      int next_worker = -1; //A worker that has one of the edges that satisfy the above
+      int parent_job = -1; //the job that the above worker was discovered from
+      
+      //min only includes reachable jobs and unreachable workers
+      for(int j = 0; j < J; j++){
+        if(j_parent[j] != -1){
+          for(int w = 0; w < W; w++){
+            if(w_parent[w] == -1){
+              int oldmin = min;
+              int v = matrix[j*W+w] - j_potential[j] - w_potential[w];
+              if(v < min){
+                min = v;
+                next_worker = w;
+                parent_job = j;
+              }
+            }
+          }
+        }
+      }
+
+      //update potential function
+      for(int j = 0; j < J; j++){
+        if(j_parent[j] != -1) j_potential[j] += min;
+      }
+      for(int w = 0; w < W; w++){
+        if(w_parent[w] != -1) w_potential[w] -= min;
+      }
+
+      int assigned_job = matching[next_worker];
+
+      if(assigned_job == -1){
+        //follow path backwards from next_worker, changing matchings until the current job is reached (swapping which edges in the augmenting path are in or out of the matching)
+        int w_traversal = next_worker;
+        int j_traversal = parent_job;
+        matching[w_traversal] = j_traversal;
+
+        while(j_traversal != current_job){
+          w_traversal = j_parent[j_traversal];
+          j_traversal = w_parent[w_traversal];
+          matching[w_traversal] = j_traversal;
+        }
+        break; //TODO: make a propper condition in the while loop instead of using break (somthing about assigned job == -1 and move this logic outside the loop?)
+        }
+      else{
+        //add next_workel and its assigned job to the reachable nodes and go again
+        j_parent[assigned_job] = next_worker;
+        w_parent[next_worker] = parent_job;
+      }
+    }
+  }
+  return matching;
+}
+
+void brute_force_helper(std::vector<int>& matrix, std::vector<int>& vec, int i, int len, int& counter, int& min, std::vector<int>& matching){
+  if(i == len){ //base case. this means we have a full permutation
+    counter++;
+
+    int score = evaluate_matching(matrix, vec);
+  
+    if(score < min){
+      matching = vec;
+      min = score;
+    }
+
+    min = std::min(min, evaluate_matching(matrix, vec));
+
+  }
+  for(int j = i; j < len; j++){ //j=i gives the "identity" swap case 
+    //swap with every element. This allows any element to start the list, and inductively that means
+    //that this gets every permutation
+    std::swap(vec[i], vec[j]);
+    brute_force_helper(matrix, vec, i+1, len, counter, min, matching);
+    std::swap(vec[i], vec[j]);
+  }
+}
+
+int brute_forcer(const int rows, const int cols, std::vector<int>& matrix){ //TODO: right now this permutes workers but it should permute jobs instead since jobs <= workers
+  std::vector<int> possible_assignments(cols, -1);
+  for(int i = 0; i < rows; i++){
+    possible_assignments[i] = i;
+  }
+  int counter = 0;
+  int min = INT_MAX;
+  std::vector<int> matching;
+  brute_force_helper(matrix, possible_assignments, 0, possible_assignments.size(), counter, min, matching);
+  //std::cout  << "Brute forcer value (checked " << counter << " combinations): " << min << std::endl;
+  //print_matching(matching); 
+  return min;
+}
+
+
+
+int evaluate_matching(std::vector<int>& matrix, std::vector<int>& matching){
+  const int cols = matching.size();
+  const int rows = matrix.size()/cols;
+  int total = 0;
+  for(int w = 0; w < cols; w++){
+    int j = matching[w];
+    if(j != -1) total += matrix[j*cols+w];
+    // std::cout  << "Worker " << w << " did job " << j << " with cost " << matrix[j*cols+w] << std::endl;
+  }
+  return total;
 }
 
 /* TODO:
