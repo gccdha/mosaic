@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 // #include <getopt.h>
-// #include <omp.h>
+#include <omp.h>
 #define SQSIZE 30
 #define SQWIDTH 64
 #define SQHEIGHT 36
@@ -35,6 +35,7 @@ std::vector<int> graph_hungarian(const int rows, const int cols, const std::vect
 int evaluate_matching(std::vector<int>& matrix, std::vector<int>& matching);
 int brute_forcer(const int rows, const int cols, std::vector<int>& matrix);
 void print_matching(std::vector<int>& matching);
+std::vector<int> auction_algorithm(const int rows, const int cols, std::vector<int> matrix);
 
 
 void test(const int rows, const int cols, std::vector<int>& matrix, std::vector<std::pair<int, int>>& output){
@@ -137,38 +138,39 @@ int main (int argc, char *argv[]){
   // return 0;
   //
   
-  const int rows = 10000;
-  const int columns = 10000;
+  const int rows = 1000;
+  const int columns = 1000;
 
 
   std::vector<int> vec(rows*columns, 0);
   
-  for(int seed = 0; seed < 1; seed++){
-    srand(seed);
-    for(int i = 0; i < rows*columns; i++){
-      vec[i] = rand() % 1000;
-      // std::cout << vec[i] << ' ';
-    }
 
-    std::vector<std::pair<int, int>> output;
-    std::vector<int> vec2 = vec;
-
-    //
-    // test(rows, columns, vec, output);
-    // hungarian_algorithm(rows, columns, vec2,output);
-    // print_matrix(rows, columns, vec);
-    std::vector<int> matching = graph_hungarian(rows, columns, vec);
-
-    //int ha = evaluate_matching(vec, matching);
-
-
-    //std::cout << "Hungarian algorithm value: " << evaluate_matching(vec2, matching) << std::endl;
-    //print_matching(matching);:
-
-    //int bf = brute_forcer(rows, columns, vec);
-
-    //assert(ha == bf);
+  srand(10);
+  for(int i = 0; i < rows*columns; i++){
+    vec[i] = rand() % 1000;
+    // std::cout << vec[i] << ' ';
   }
+
+
+  const auto h_start = std::chrono::high_resolution_clock::now();
+  std::vector<int> h_matching = hungarian_algorithm(rows, columns, vec);
+  const auto h_end = std::chrono::high_resolution_clock::now(); //End timer
+  const std::chrono::duration<double> h_elapsed_seconds{h_end-h_start};
+  std::cout << "Hungarian run in " << h_elapsed_seconds.count() <<"s\n";
+
+  const auto a_start = std::chrono::high_resolution_clock::now();
+  std::vector<int> a_matching = auction_algorithm(rows,columns,vec);
+  const auto a_end = std::chrono::high_resolution_clock::now(); //End timer
+  const std::chrono::duration<double> a_elapsed_seconds{a_end-a_start};
+  std::cout << "Auction run in " << a_elapsed_seconds.count() <<"s\n";
+
+  int h_val = evaluate_matching(vec, h_matching);
+  int a_val = evaluate_matching(vec, a_matching);
+  std::cout << "Hungarian: " << h_val
+            << "\nAuction: " << a_val
+            << std::endl;
+  // assert(h_val == a_val);
+
 
 }
 
@@ -641,7 +643,7 @@ std::vector<int> graph_hungarian(const int rows, const int cols, const std::vect
   std::vector<int> j_potential(J, 0); //for job nodes
 
   for(int current_job = 0; current_job < J; current_job++){
-    std::cout << "Assigning job " << current_job << '\n';
+    //std::cout << "Assigning job " << current_job << '\n';
     // jobs.push_back(current_job); //add the current node to get S_j from S_{j-1}
     
     ///keeps track of which nodes can do what for the min and the path back to j(Z)
@@ -661,7 +663,7 @@ std::vector<int> graph_hungarian(const int rows, const int cols, const std::vect
             if(w_parent[w] == -1){
               int oldmin = min;
               int v = matrix[j*W+w] - j_potential[j] - w_potential[w];
-              if(v < min){
+              if(v < min){ //PERF: this is the hottest part of the function. There is a way to get rid of one of these nested loops.
                 min = v;
                 next_worker = w;
                 parent_job = j;
@@ -754,6 +756,92 @@ int evaluate_matching(std::vector<int>& matrix, std::vector<int>& matching){
   }
   return total;
 }
+
+
+//dual? idk. this function sets the new value in the matrix to the max value minus the original value
+void positive_inverse(std::vector<int>& matrix){
+  std::span<int> matspan = std::span(matrix);
+  int max = *std::max_element(matspan.begin(), matspan.end());
+  std::transform(matrix.begin(), matrix.end(), matrix.begin(),
+                 [max](int e) -> int{return max-e;});
+}
+
+
+std::vector<int> auction_algorithm(const int rows, const int cols, std::vector<int> matrix){
+  const int J = rows;
+  const int W = cols;
+  const double epsilon = 1.0/(rows-1.0);
+
+  positive_inverse(matrix);
+
+  std::vector<int> assignments(W, -1);
+  std::vector<int> j_assignments(J, -1);
+  std::vector<double> prices(J, 0.0);
+
+  while(true){
+    //find all unassigned workers
+    std::vector<int> unassigned;
+    for(int w = 0; w < W; w++){
+      if(assignments[w] == -1) unassigned.push_back(w);
+    }
+    if(unassigned.empty()) break;
+
+    // std::vector<int> bid_items(J, -1); //best bidding worker for each item
+    std::vector<double> bids(W, -1); //bid from each parallel worker
+
+    while(!unassigned.empty()){
+      const int bidder = unassigned.back();
+      unassigned.pop_back();
+
+      double primary_bid = -2e100;
+      double secondary_bid = -2e100;
+      int best_item = -1;
+
+      // go through every worker and calculate their best bid
+      for(int j = 0; j < J; j++){
+        // find the item that gives the best value (matrix contains how much an item is "worth", and the prices are how much it "costs")
+        // and the value of the second best item
+        double value = matrix[j*W+bidder] - prices[j];
+
+
+        if(value > primary_bid){
+          secondary_bid = primary_bid;
+          primary_bid = value;
+          best_item = j;
+        } else if(value > secondary_bid){
+          secondary_bid = value;
+        }
+      }
+
+      double increment = primary_bid - secondary_bid + epsilon; 
+
+      prices[best_item] += increment;
+
+      int previous = j_assignments[best_item];
+
+      if(previous != -1) assignments[previous] = -1;
+
+      assignments[bidder] = best_item;
+      j_assignments[best_item] = bidder;
+      
+      if(assignments[previous] == -1) unassigned.push_back(previous);
+    }
+  }
+return assignments;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* TODO:
  * 3. implement hungarian alg

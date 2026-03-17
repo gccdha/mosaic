@@ -6,6 +6,8 @@ project(mosaic)  # Your project name
 # clangd LSP support
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# verbose output
+set(CMAKE_VERBOSE_MAKEFILE ON)
 # allow c++20 features
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
