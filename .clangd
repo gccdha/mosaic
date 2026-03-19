@@ -1,0 +1,3 @@
+PathMatch: /nix/store/.+opencv.+/include/.*
+Diagnostics:
+  Suppress: 'builtin_definition'
