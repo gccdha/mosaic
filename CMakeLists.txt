@@ -22,6 +22,7 @@ set(SOURCES
   src/assignment.cpp 
   src/compare.cpp
 )
+add_compile_options(-Wall -Wextra -Wpedantic -g)
 add_executable(mosaic ${SOURCES})  # Define the target executable
 
 # add includes

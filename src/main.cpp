@@ -5,7 +5,10 @@
 #include <format>
 #include <iostream>
 #include <chrono>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <span>
+#include <sstream>
 #include <stdlib.h>
 #include <cmath>
 #include <opencv2/opencv.hpp>
@@ -15,12 +18,6 @@
 #include "assignment.hpp"
 #include "images.hpp"
 #include "compare.hpp"
-#define SQSIZE 30
-#define SQWIDTH 64
-#define SQHEIGHT 36
-
-const static int AREA = SQWIDTH*SQHEIGHT;
-const static int AREA_S = AREA*8;
 
 void print_matrix(const int rows, const int cols, std::vector<int>& matrix, std::pair<std::vector<int>, const std::vector<int>> lines = {{},{}});
 int evaluate_matching(std::vector<int>& matrix, std::vector<int>& matching);
@@ -28,38 +25,78 @@ void print_matching(std::vector<int>& matching);
 
 
 int main (int argc, char *argv[]){
-  
+
+
+
+  const int tile_height = 120; //WARN: be cautious with tile_height > ~1500 because costs could approach INT_MAX
+  const int tile_width = tile_height; 
+  const int height = 9;
+  const int width = 16;
+
   // const auto start = std::chrono::high_resolution_clock::now(); //Start timer
-  // //Parse command line arguments
-  // if(argc <= 2) std::cout << "ERROR: expected 2 arguments" << std::endl;
-  // else return -1;
-  //
-  // std::string file = argv[1];
-  // std::string file2 = argv[2];
-  // std::cout<<"reading "<<file<< " " <<file2<<'\n';
-  //
-  // //Read files. img is source and img2 is targt TODO: rename vars to reflect this
-  // cv::Mat img = cv::imread(file);
-  // cv::Mat img2 = cv::imread(file2);
-  // if (img.empty()||img2.empty()) {
-  //     std::cerr << "Image not loaded!" << std::endl;
-  //     return -1;
-  // }
-  //
-  // //Extract into array
-  // cv::Mat squares[AREA_S];
-  // cv::Mat tiles[AREA];
-  // disect(img, squares, true);
-  // disect(img2, tiles, false);
-  //
-  // //Generate cost matrix for each pairing of input and output:
-  // int table[AREA][AREA_S];
-  // #pragma omp parallel for collapse(2)
-  // for(int i = AREA-1; i>=0;i--){
-  //   for(int j = AREA_S-1;j>=0;j--){
-  //     table[i][j]=cost(squares[j],tiles[i]);
-  //   }
-  // }
+
+  //Parse command line arguments
+  if(argc <= 2){
+    std::cout << "ERROR: expected 2 arguments" << std::endl;
+    return -1; 
+  }
+
+  //Read files. Return if one can't be loaded
+  std::string source_file = argv[1];
+  std::string target_file = argv[2];
+  cv::Mat source, target;
+
+  if(!(read_image(source_file, source) && read_image(target_file, target)))
+    return -1;
+
+  //Crop images to be the same size and be tile aligned
+  // crop_to_match( source, target, tile_width, tile_height);
+
+  //Extract images into vectors of tiles
+  std::vector<cv::Mat> source_tiles, target_tiles;
+  bool all_rotations[8] = {1,0,0,0,0,0,0,0};
+  bool no_rotations[8] = {1,0,0,0,0,0,0,0};
+  disect(source, source_tiles, all_rotations, height, width, tile_height, tile_width);
+  disect(target, target_tiles, no_rotations, height, width, tile_height, tile_width);
+
+  const int rows = target_tiles.size();
+  const int cols = source_tiles.size();
+
+  for(int i = 0; i < rows; i++){
+    std::stringstream ss;
+    ss << "testoutput/t/" << i << ".bmp";
+    cv::imwrite(ss.str(), target_tiles[i]);
+  }
+
+  for(int i = 0; i < cols; i++){
+    std::stringstream ss;
+    ss << "testoutput/s/" << i << ".bmp";
+    cv::imwrite(ss.str(), source_tiles[i]);
+  }
+
+
+  //Generate the cost matrix
+  std::vector<int> matrix = generate_matrix(source_tiles, target_tiles, true);
+
+  print_matrix(rows, cols, matrix);
+
+  //Find optimal matching
+  std::vector<int> matching = graph_hungarian(rows, cols, matrix);
+
+
+  //Get corresponding tiles 
+  std::vector<cv::Mat> tiles = select_images(matching, source_tiles, rows);
+
+  //Stitch together final image and make visualization
+  cv::Mat final_image = stitch(tiles, width, height);
+  cv::Mat visualization = visualize_matching(matching, height, width, tile_height, tile_width);
+  
+  std::cout << "Writing files\n";
+
+  //write files
+  cv::imwrite("output.bmp", final_image);
+  cv::imwrite("visual.bmp", visualization);
+
   //
   // //Find optimal solution and output squares in corresponding order (need to be constructed externally with imagemagick)
   // //TODO: find a way to stitch images back together without outputting them
@@ -95,39 +132,41 @@ int main (int argc, char *argv[]){
   // return 0;
   //
   
-  const int rows = 1000;
-  const int columns = 1000;
-
-
-  std::vector<int> vec(rows*columns, 0);
-  
-
-  srand(10);
-  for(int i = 0; i < rows*columns; i++){
-    vec[i] = rand() % 1000;
-    // std::cout << vec[i] << ' ';
-  }
-
-
-  const auto h_start = std::chrono::high_resolution_clock::now();
-  std::vector<int> h_matching = graph_hungarian(rows, columns, vec);
-  const auto h_end = std::chrono::high_resolution_clock::now(); //End timer
-  const std::chrono::duration<double> h_elapsed_seconds{h_end-h_start};
-  std::cout << "Hungarian run in " << h_elapsed_seconds.count() <<"s\n";
-
-  const auto a_start = std::chrono::high_resolution_clock::now();
-  std::vector<int> a_matching = auction_algorithm(rows,columns,vec);
-  const auto a_end = std::chrono::high_resolution_clock::now(); //End timer
-  const std::chrono::duration<double> a_elapsed_seconds{a_end-a_start};
-  std::cout << "Auction run in " << a_elapsed_seconds.count() <<"s\n";
-
-  int h_val = evaluate_matching(vec, h_matching);
-  int a_val = evaluate_matching(vec, a_matching);
-  std::cout << "Hungarian: " << h_val
-            << "\nAuction: " << a_val
-            << std::endl;
-  // assert(h_val == a_val);
-
+  // const int rows = 1000;
+  // const int columns = 1000;
+  //
+  //
+  // std::vector<int> vec(rows*columns, 0);
+  //
+  //
+  // srand(10);
+  // for(int i = 0; i < rows*columns; i++){
+  //   vec[i] = rand() % 1000;
+  //   // std::cout << vec[i] << ' ';
+  // }
+  //
+  //
+  // const auto h_start = std::chrono::high_resolution_clock::now();
+  // std::vector<int> h_matching = graph_hungarian(rows, columns, vec);
+  // const auto h_end = std::chrono::high_resolution_clock::now(); //End timer
+  // const std::chrono::duration<double> h_elapsed_seconds{h_end-h_start};
+  // std::cout << "Hungarian run in " << h_elapsed_seconds.count() <<"s\n";
+  //
+  // const auto a_start = std::chrono::high_resolution_clock::now();
+  // std::vector<int> a_matching = auction_algorithm(rows,columns,vec);
+  // const auto a_end = std::chrono::high_resolution_clock::now(); //End timer
+  // const std::chrono::duration<double> a_elapsed_seconds{a_end-a_start};
+  // std::cout << "Auction run in " << a_elapsed_seconds.count() <<"s\n";
+  //
+  // int h_val = evaluate_matching(vec, h_matching);
+  // int a_val = evaluate_matching(vec, a_matching);
+  // std::cout << "Hungarian: " << h_val
+  //           << "\nAuction: " << a_val
+  //           << std::endl;
+  // // assert(h_val == a_val);
+  //
+  // cv::Mat new_img = visualize_matching(h_matching, 25, 40, 60, 60);
+  // cv::imwrite("test.bmp", new_img);
 
 }
 
@@ -177,7 +216,6 @@ void print_matrix(const int rows, const int cols, std::vector<int>& matrix, std:
 
 
 /* TODO:
- * 3. implement hungarian alg
  * 4. figure out how to restitch the image back together
  * 5. implement the canny edge finding
  * 6. replace this : montage $(seq -f "%gout.bmp" 0 2303) -tile 64x36 -geometry +0+0 -font DejaVu-Sans output.jpg
