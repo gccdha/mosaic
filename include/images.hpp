@@ -4,7 +4,7 @@
 #include <string>
 
 bool read_image(std::string file, cv::Mat& output);
-cv::Mat transform(cv::Mat, bool reflect = 0, int rotate = 0);
+cv::Mat transform(const cv::Mat&, bool reflect = 0, int rotate = 0);
 void disect(cv::Mat, std::vector<cv::Mat>&, bool[8], const int, const int, const int, const int);
 std::vector<cv::Mat> select_images(std::vector<int>& matching, std::vector<cv::Mat>& sources, const int jobs);
 cv::Mat visualize_matching(std::vector<int>& matching, const int height, const int width, const int tile_height, const int tile_width);

@@ -62,27 +62,11 @@ int main (int argc, char *argv[]){
   const int rows = target_tiles.size();
   const int cols = source_tiles.size();
 
-  for(int i = 0; i < rows; i++){
-    std::stringstream ss;
-    ss << "testoutput/t/" << i << ".bmp";
-    cv::imwrite(ss.str(), target_tiles[i]);
-  }
-
-  for(int i = 0; i < cols; i++){
-    std::stringstream ss;
-    ss << "testoutput/s/" << i << ".bmp";
-    cv::imwrite(ss.str(), source_tiles[i]);
-  }
-
-
   //Generate the cost matrix
-  std::vector<int> matrix = generate_matrix(source_tiles, target_tiles, true);
-
-  print_matrix(rows, cols, matrix);
+  std::vector<int> matrix = generate_matrix(source_tiles, target_tiles, false);
 
   //Find optimal matching
   std::vector<int> matching = graph_hungarian(rows, cols, matrix);
-
 
   //Get corresponding tiles 
   std::vector<cv::Mat> tiles = select_images(matching, source_tiles, rows);

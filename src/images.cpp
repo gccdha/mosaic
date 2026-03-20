@@ -29,7 +29,8 @@ bool read_image(std::string file, cv::Mat& output){
 //if reflect == true, reflect over the x axis
 //rotate rotates 90, 180 or 270 degrees for 1, 2, and 3 respectively
 //reflection is applied before rotation
-cv::Mat transform(cv::Mat img, bool reflect, int rotate){
+cv::Mat transform(const cv::Mat& image, bool reflect, int rotate){
+  cv::Mat img = image.clone();
   if(reflect){
     // reflect over x axis
     cv::flip(img, img, 0);
@@ -47,7 +48,7 @@ cv::Mat transform(cv::Mat img, bool reflect, int rotate){
       cv::rotate(img, img, cv::ROTATE_90_COUNTERCLOCKWISE);
       break;
   }
-  return img.clone();
+  return img;
 }
 
 //disect the input image into a number of squares based on the global parameters
@@ -67,7 +68,8 @@ void disect(cv::Mat img, std::vector<cv::Mat>& tiles, bool symetries[8], const i
       int xindex = j*tile_width; //x pixel index
       for(int k=0; k < tile_height; k++){
         for(int l=0; l < tile_width; l++){
-          raw_tiles[i*width+j].at<cv::Vec3b>(k,l)=img.at<cv::Vec3b>(yindex+k, xindex+l); 
+          cv::Rect tile(xindex,yindex,tile_width,tile_height);
+          raw_tiles[i*width+j]=img(tile).clone(); 
           //squares[i][j].at<cv::Vec3b>(k,l)=img.at<cv::Vec3b>(i, j);
         }
       }
